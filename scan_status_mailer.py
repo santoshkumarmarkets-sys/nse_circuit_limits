@@ -17,8 +17,8 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 IST       = timezone(timedelta(hours=5, minutes=30))
 BASE      = os.path.dirname(os.path.abspath(__file__))
-TO_EMAIL  = "satya482@gmail.com"
-FROM_EMAIL= os.environ.get("GMAIL_USER", "satya482@gmail.com")
+TO_EMAIL  = "santoshkumarmarkets@gmail.com"
+FROM_EMAIL= os.environ.get("GMAIL_USER", "santoshkumarmarkets@gmail.com")
 
 SCANNER_KEYWORDS = {
     "Swing Scanner":        "swing scan",

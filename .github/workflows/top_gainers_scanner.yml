@@ -1,0 +1,36 @@
+name: NSE Top Gainers Scanner — Daily 5PM IST
+
+on:
+  schedule:
+    - cron: "30 11 * * 1-5"   # 11:30 UTC = 17:00 IST, Mon–Fri
+  workflow_dispatch:            # allow manual trigger from GitHub UI
+
+jobs:
+  scan-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run top gainers scanner
+        run: python top_gainers_scanner.py
+
+      - name: Commit and push results
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add top_gainers/
+          git diff --staged --quiet \
+            || git commit -m "top-gainers: $(date +'%Y-%m-%d') 17:00 IST scan"
+          git push
