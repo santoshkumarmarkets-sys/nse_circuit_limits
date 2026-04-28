@@ -2,7 +2,7 @@ name: NSE Top Gainers Scanner — Daily 5PM IST
 
 on:
   schedule:
-    - cron: "30 11 * * 1-5"   # 11:30 UTC = 17:00 IST, Mon–Fri
+    - cron: "30 10 * * 1-5"   # 11:30 UTC = 17:00 IST, Mon–Fri
   workflow_dispatch:            # allow manual trigger from GitHub UI
 
 jobs:
