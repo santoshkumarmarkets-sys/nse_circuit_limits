@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NSE Common Period Gainers Dashboard - 2026-06-19</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --bd:#30363d;--tx:#e6edf3;--mu:#8b949e;
+  --gld:#ffd700;--grn:#3fb950;--red:#f85149;--blu:#58a6ff;--pur:#a371f7;--ylw:#e3b341;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;padding:16px;line-height:1.4}
+h1{font-size:1.25rem;color:var(--blu);margin-bottom:3px}
+.sub{color:var(--mu);font-size:11px;margin-bottom:16px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.stat{background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:7px 14px;text-align:center;min-width:84px}
+.sv{font-size:1.5rem;font-weight:700;line-height:1.1}
+.sl{color:var(--mu);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.grn{color:var(--grn)}.red{color:var(--red)}.blu{color:var(--blu)}.pur{color:var(--pur)}.gld{color:var(--gld)}
+.section{margin-bottom:18px}
+.stitle{font-size:.78rem;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;border-bottom:1px solid var(--bd);padding-bottom:3px}
+table{width:100%;border-collapse:collapse;background:var(--bg2);border-radius:6px;overflow:hidden;font-size:12px}
+th{background:var(--bg3);color:var(--mu);font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:5px 9px;text-align:left;border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:1}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable::after{content:"  ↕";color:var(--mu);font-size:9px}
+th.sorted{color:var(--gld)!important}
+th.sorted::after{content:" ↑"!important;color:var(--gld)}
+th.sorted[data-asc="false"]::after{content:" ↓"!important;color:var(--gld)}
+td{padding:4px 9px;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg3)}
+.r3{background:rgba(255,215,0,.07)}.r3:hover td{background:rgba(255,215,0,.13)}
+.r2{background:rgba(88,166,255,.05)}
+.sym{font-weight:600;font-family:monospace;font-size:12px;white-space:nowrap}
+.sym a{color:inherit;text-decoration:none}.sym a:hover{text-decoration:underline;color:var(--blu)}
+.num{font-family:monospace;font-size:12px;color:var(--mu);text-align:right}
+.pos{color:var(--grn)}.neg{color:var(--red)}
+.ccy{color:var(--ylw)}.ccr{color:var(--red)}.ccg{color:var(--grn)}.ccb{color:var(--blu)}
+td.sorted-col{background:rgba(255,215,0,.04)}
+.days{font-size:11px;color:var(--mu);min-width:150px;max-width:260px}
+.empty{color:var(--mu);font-style:italic;text-align:center;padding:8px}
+.scroll{overflow:auto;max-height:78vh;border-radius:6px}
+@media(max-width:900px){body{padding:10px}.days{min-width:180px}}
+.tab-nav{display:flex;gap:6px;margin-bottom:14px}
+.tab-btn{background:var(--bg2);border:1px solid var(--bd);color:var(--mu);padding:5px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.4px;transition:color .15s,border-color .15s}
+.tab-btn.active{background:var(--bg3);border-color:var(--blu);color:var(--blu)}
+.tab-content{display:block}
+.badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.badge-tb{background:rgba(63,185,80,.2);color:var(--grn)}.badge-wf{background:rgba(248,81,73,.2);color:var(--red)}.badge-eb{background:rgba(227,179,65,.2);color:var(--ylw)}.badge-lp{background:rgba(88,166,255,.2);color:var(--blu)}.badge-ch{background:rgba(139,148,158,.2);color:var(--mu)}
+</style>
+</head>
+<body>
+<h1>NSE Common Period Gainers Dashboard - 2026-06-19</h1>
+<div class="sub">Generated 2026-06-20 08:08 IST from top_gainers_summary.csv</div>
+<div class="bar">
+  <div class="stat"><div class="sv blu">20</div><div class="sl">Common</div></div>
+  <div class="stat"><div class="sv gld">250</div><div class="sl">Top50 1W</div></div>
+  <div class="stat"><div class="sv gld">1000</div><div class="sl">Top50 1M</div></div>
+  <div class="stat"><div class="sv gld">3050</div><div class="sl">Top50 3M</div></div>
+  <div class="stat"><div class="sv grn">3159</div><div class="sl">Up >=4% 1M</div></div>
+  <div class="stat"><div class="sv red">1464</div><div class="sl">Down &gt;4% 1M</div></div>
+</div>
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="showTab('gainers',this)">Top Gainers</button>
+  <button class="tab-btn" onclick="showTab('watchlist',this)">Watchlist</button>
+  <button class="tab-btn" onclick="showTab('journal',this)">Journal</button>
+</nav>
+<div id="tab-gainers" class="tab-content">
+<div class="section">
+  <div class="stitle">Common 1M / 2M / 3M Gainers - sortable counts</div>
+  <div class="scroll">
+    <table id="todayTopGainers">
+      <thead><tr><th class="sortable" data-sort="num">Rank</th><th class="sortable" data-sort="text">Symbol</th><th class="sortable" data-sort="text">Sector</th><th class="sortable" data-sort="num">Close</th><th class="sortable" data-sort="num">Day Chg</th><th class="sortable" data-sort="num">Gain 1W</th><th class="sortable" data-sort="num">Gain 1M</th><th class="sortable" data-sort="num">Gain 2M</th><th class="sortable" data-sort="num">Gain 3M</th><th class="sortable" data-sort="text">Circuit</th><th class="sortable" data-sort="num">Top50 1W</th><th class="sortable" data-sort="num">Top50 1M</th><th class="sortable" data-sort="num">Top50 3M</th><th class="sortable" data-sort="num">Up >=4% 1W</th><th class="sortable" data-sort="num">Up >=4% 1M</th><th class="sortable" data-sort="num">Up >=4% 3M</th><th class="sortable" data-sort="num">Down &gt;4% 1W</th><th class="sortable" data-sort="num">Down &gt;4% 1M</th><th class="sortable" data-sort="num">Down &gt;4% 3M</th></tr></thead>
+      <tbody><tr class=""><td class="num">1</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:MODISONLTD" target="_blank" rel="noopener">MODISONLTD</a></td><td>Industrial Services<br><span style="font-size:10px;color:var(--mu)">Engineering &amp; Construction</span></td><td class="num">322.15</td><td class="num pos">+4.93%</td><td class="num pos">+5.64%</td><td class="num pos">+83.34%</td><td class="num pos">+119.21%</td><td class="num pos">+159.40%</td><td class="">-</td><td class="num">0</td><td class="num">3</td><td class="num">4</td><td class="num pos">2</td><td class="num pos">10</td><td class="num pos">15</td><td class="num neg">0</td><td class="num neg">4</td><td class="num neg">6</td></tr>
+<tr class=""><td class="num">2</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:HITECHCORP" target="_blank" rel="noopener">HITECHCORP</a></td><td>Producer Manufacturing<br><span style="font-size:10px;color:var(--mu)">Miscellaneous Manufacturing</span></td><td class="num">307.73</td><td class="num neg">-0.67%</td><td class="num neg">-0.74%</td><td class="num pos">+82.03%</td><td class="num pos">+113.24%</td><td class="num pos">+120.96%</td><td class="">-</td><td class="num">0</td><td class="num">4</td><td class="num">6</td><td class="num pos">1</td><td class="num pos">8</td><td class="num pos">15</td><td class="num neg">0</td><td class="num neg">0</td><td class="num neg">4</td></tr>
+<tr class="r2"><td class="num">3</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:PARAS" target="_blank" rel="noopener">PARAS</a></td><td>Electronic Technology<br><span style="font-size:10px;color:var(--mu)">Aerospace &amp; Defense</span></td><td class="num">1408.65</td><td class="num pos">+7.51%</td><td class="num pos">+28.39%</td><td class="num pos">+78.15%</td><td class="num pos">+72.42%</td><td class="num pos">+115.37%</td><td class="">-</td><td class="num">2</td><td class="num">6</td><td class="num">7</td><td class="num pos">2</td><td class="num pos">8</td><td class="num pos">15</td><td class="num neg">0</td><td class="num neg">1</td><td class="num neg">4</td></tr>
+<tr class=""><td class="num">4</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:VENUSREM" target="_blank" rel="noopener">VENUSREM</a></td><td>Health Technology<br><span style="font-size:10px;color:var(--mu)">Pharmaceuticals: Major</span></td><td class="num">1739.10</td><td class="num pos">+0.00%</td><td class="num neg">-3.25%</td><td class="num pos">+68.75%</td><td class="num pos">+69.83%</td><td class="num pos">+90.09%</td><td class="ccr">5% 🟥 Red</td><td class="num">0</td><td class="num">4</td><td class="num">5</td><td class="num pos">1</td><td class="num pos">12</td><td class="num pos">21</td><td class="num neg">1</td><td class="num neg">2</td><td class="num neg">8</td></tr>
+<tr class=""><td class="num">5</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:BLISSGVS" target="_blank" rel="noopener">BLISSGVS</a></td><td>Health Technology<br><span style="font-size:10px;color:var(--mu)">Pharmaceuticals: Major</span></td><td class="num">486.30</td><td class="num pos">+0.69%</td><td class="num pos">+11.07%</td><td class="num pos">+64.74%</td><td class="num pos">+77.75%</td><td class="num pos">+125.76%</td><td class="">-</td><td class="num">0</td><td class="num">3</td><td class="num">4</td><td class="num pos">1</td><td class="num pos">6</td><td class="num pos">12</td><td class="num neg">0</td><td class="num neg">2</td><td class="num neg">4</td></tr>
+<tr class=""><td class="num">6</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:SIGMAADV" target="_blank" rel="noopener">SIGMAADV</a></td><td>Technology Services<br><span style="font-size:10px;color:var(--mu)">Information Technology Services</span></td><td class="num">525.05</td><td class="num pos">+5.00%</td><td class="num pos">+9.50%</td><td class="num pos">+57.70%</td><td class="num pos">+142.87%</td><td class="num pos">+246.59%</td><td class="">-</td><td class="num">0</td><td class="num">2</td><td class="num">5</td><td class="num pos">2</td><td class="num pos">12</td><td class="num pos">32</td><td class="num neg">0</td><td class="num neg">2</td><td class="num neg">7</td></tr>
+<tr class=""><td class="num">7</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:STLTECH" target="_blank" rel="noopener">STLTECH</a></td><td>Technology Services<br><span style="font-size:10px;color:var(--mu)">Information Technology Services</span></td><td class="num">654.35</td><td class="num pos">+1.10%</td><td class="num pos">+12.11%</td><td class="num pos">+55.74%</td><td class="num pos">+124.87%</td><td class="num pos">+238.88%</td><td class="">-</td><td class="num">0</td><td class="num">2</td><td class="num">3</td><td class="num pos">2</td><td class="num pos">12</td><td class="num pos">29</td><td class="num neg">0</td><td class="num neg">3</td><td class="num neg">8</td></tr>
+<tr class=""><td class="num">8</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:BLUSPRING" target="_blank" rel="noopener">BLUSPRING</a></td><td>Commercial Services<br><span style="font-size:10px;color:var(--mu)">Miscellaneous Commercial Services</span></td><td class="num">108.39</td><td class="num neg">-5.16%</td><td class="num pos">+22.67%</td><td class="num pos">+55.69%</td><td class="num pos">+69.39%</td><td class="num pos">+131.45%</td><td class="">-</td><td class="num">1</td><td class="num">4</td><td class="num">7</td><td class="num pos">3</td><td class="num pos">7</td><td class="num pos">15</td><td class="num neg">1</td><td class="num neg">3</td><td class="num neg">8</td></tr>
+<tr class=""><td class="num">9</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:GVPIL" target="_blank" rel="noopener">GVPIL</a></td><td>Industrial Services<br><span style="font-size:10px;color:var(--mu)">Engineering &amp; Construction</span></td><td class="num">1052.55</td><td class="num pos">+5.00%</td><td class="num pos">+13.23%</td><td class="num pos">+50.89%</td><td class="num pos">+109.40%</td><td class="num pos">+134.89%</td><td class="ccr">5% 🟥 Red</td><td class="num">0</td><td class="num">0</td><td class="num">2</td><td class="num pos">3</td><td class="num pos">10</td><td class="num pos">25</td><td class="num neg">1</td><td class="num neg">2</td><td class="num neg">6</td></tr>
+<tr class=""><td class="num">10</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:CPPLUS" target="_blank" rel="noopener">CPPLUS</a></td><td>Consumer Durables<br><span style="font-size:10px;color:var(--mu)">Electronics/Appliances</span></td><td class="num">3637.80</td><td class="num pos">+3.53%</td><td class="num pos">+7.76%</td><td class="num pos">+50.55%</td><td class="num pos">+66.57%</td><td class="num pos">+116.03%</td><td class="">-</td><td class="num">0</td><td class="num">2</td><td class="num">4</td><td class="num pos">1</td><td class="num pos">6</td><td class="num pos">9</td><td class="num neg">0</td><td class="num neg">0</td><td class="num neg">1</td></tr>
+<tr class=""><td class="num">11</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:SASKEN" target="_blank" rel="noopener">SASKEN</a></td><td>Technology Services<br><span style="font-size:10px;color:var(--mu)">Information Technology Services</span></td><td class="num">2586.10</td><td class="num neg">-2.33%</td><td class="num pos">+21.95%</td><td class="num pos">+49.27%</td><td class="num pos">+99.08%</td><td class="num pos">+124.80%</td><td class="">-</td><td class="num">2</td><td class="num">4</td><td class="num">8</td><td class="num pos">2</td><td class="num pos">8</td><td class="num pos">14</td><td class="num neg">0</td><td class="num neg">2</td><td class="num neg">6</td></tr>
+<tr class=""><td class="num">12</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:HFCL" target="_blank" rel="noopener">HFCL</a></td><td>Electronic Technology<br><span style="font-size:10px;color:var(--mu)">Telecommunications Equipment</span></td><td class="num">209.61</td><td class="num pos">+5.00%</td><td class="num pos">+21.97%</td><td class="num pos">+47.87%</td><td class="num pos">+108.84%</td><td class="num pos">+188.60%</td><td class="">-</td><td class="num">0</td><td class="num">2</td><td class="num">7</td><td class="num pos">4</td><td class="num pos">10</td><td class="num pos">21</td><td class="num neg">0</td><td class="num neg">3</td><td class="num neg">6</td></tr>
+<tr class=""><td class="num">13</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:CUPID" target="_blank" rel="noopener">CUPID</a></td><td>Consumer Non-Durables<br><span style="font-size:10px;color:var(--mu)">Household/Personal Care</span></td><td class="num">176.92</td><td class="num pos">+4.57%</td><td class="num pos">+10.60%</td><td class="num pos">+47.24%</td><td class="num pos">+56.65%</td><td class="num pos">+123.10%</td><td class="">-</td><td class="num">0</td><td class="num">0</td><td class="num">2</td><td class="num pos">1</td><td class="num pos">1</td><td class="num pos">8</td><td class="num neg">0</td><td class="num neg">0</td><td class="num neg">2</td></tr>
+<tr class=""><td class="num">14</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:KERNEX" target="_blank" rel="noopener">KERNEX</a></td><td>Electronic Technology<br><span style="font-size:10px;color:var(--mu)">Computer Communications</span></td><td class="num">1999.50</td><td class="num neg">-3.76%</td><td class="num pos">+0.31%</td><td class="num pos">+46.61%</td><td class="num pos">+63.20%</td><td class="num pos">+106.60%</td><td class="">-</td><td class="num">0</td><td class="num">3</td><td class="num">5</td><td class="num pos">0</td><td class="num pos">5</td><td class="num pos">12</td><td class="num neg">0</td><td class="num neg">0</td><td class="num neg">4</td></tr>
+<tr class=""><td class="num">15</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:VINDHYATEL" target="_blank" rel="noopener">VINDHYATEL</a></td><td>Industrial Services<br><span style="font-size:10px;color:var(--mu)">Engineering &amp; Construction</span></td><td class="num">2374.10</td><td class="num pos">+8.93%</td><td class="num pos">+13.71%</td><td class="num pos">+45.69%</td><td class="num pos">+76.28%</td><td class="num pos">+110.88%</td><td class="">-</td><td class="num">1</td><td class="num">4</td><td class="num">8</td><td class="num pos">2</td><td class="num pos">8</td><td class="num pos">17</td><td class="num neg">0</td><td class="num neg">2</td><td class="num neg">5</td></tr>
+<tr class=""><td class="num">16</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:JAYBARMARU" target="_blank" rel="noopener">JAYBARMARU</a></td><td>Distribution Services<br><span style="font-size:10px;color:var(--mu)">Wholesale Distributors</span></td><td class="num">169.55</td><td class="num neg">-1.88%</td><td class="num pos">+17.21%</td><td class="num pos">+44.48%</td><td class="num pos">+79.68%</td><td class="num pos">+100.34%</td><td class="">-</td><td class="num">1</td><td class="num">4</td><td class="num">6</td><td class="num pos">3</td><td class="num pos">6</td><td class="num pos">10</td><td class="num neg">0</td><td class="num neg">2</td><td class="num neg">6</td></tr>
+<tr class="r3"><td class="num">17</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:VMARCIND" target="_blank" rel="noopener">VMARCIND</a></td><td>Producer Manufacturing<br><span style="font-size:10px;color:var(--mu)">Electrical Products</span></td><td class="num">1599.75</td><td class="num pos">+0.06%</td><td class="num pos">+14.30%</td><td class="num pos">+43.95%</td><td class="num pos">+67.51%</td><td class="num pos">+135.34%</td><td class="">-</td><td class="num">1</td><td class="num">3</td><td class="num">11</td><td class="num pos">1</td><td class="num pos">4</td><td class="num pos">17</td><td class="num neg">0</td><td class="num neg">1</td><td class="num neg">6</td></tr>
+<tr class=""><td class="num">18</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:YASHO" target="_blank" rel="noopener">YASHO</a></td><td>Consumer Non-Durables<br><span style="font-size:10px;color:var(--mu)">Food: Specialty/Candy</span></td><td class="num">2878.60</td><td class="num neg">-0.48%</td><td class="num pos">+0.29%</td><td class="num pos">+43.21%</td><td class="num pos">+89.26%</td><td class="num pos">+112.73%</td><td class="">-</td><td class="num">0</td><td class="num">4</td><td class="num">8</td><td class="num pos">1</td><td class="num pos">6</td><td class="num pos">11</td><td class="num neg">0</td><td class="num neg">1</td><td class="num neg">5</td></tr>
+<tr class=""><td class="num">19</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:CEMPRO" target="_blank" rel="noopener">CEMPRO</a></td><td>Industrial Services<br><span style="font-size:10px;color:var(--mu)">Engineering &amp; Construction</span></td><td class="num">1252.00</td><td class="num pos">+5.00%</td><td class="num pos">+11.55%</td><td class="num pos">+42.56%</td><td class="num pos">+85.40%</td><td class="num pos">+127.82%</td><td class="">-</td><td class="num">0</td><td class="num">4</td><td class="num">6</td><td class="num pos">2</td><td class="num pos">7</td><td class="num pos">16</td><td class="num neg">0</td><td class="num neg">2</td><td class="num neg">6</td></tr>
+<tr class=""><td class="num">20</td><td class="sym"><a href="https://in.tradingview.com/chart/?symbol=NSE:DEEDEV" target="_blank" rel="noopener">DEEDEV</a></td><td>Producer Manufacturing<br><span style="font-size:10px;color:var(--mu)">Industrial Machinery</span></td><td class="num">703.05</td><td class="num neg">-1.53%</td><td class="num pos">+7.06%</td><td class="num pos">+40.92%</td><td class="num pos">+70.77%</td><td class="num pos">+149.49%</td><td class="ccr">5% 🟥 Red</td><td class="num">0</td><td class="num">1</td><td class="num">3</td><td class="num pos">2</td><td class="num pos">11</td><td class="num pos">28</td><td class="num neg">0</td><td class="num neg">2</td><td class="num neg">7</td></tr></tbody>
+    </table>
+  </div>
+</div>
+</div>
+<div id="tab-watchlist" class="tab-content" style="display:none">
+<div class="section"><div class="stitle" style="margin-bottom:6px">Capital ₹500,000 &nbsp;|&nbsp; Risk 0.5% = ₹2,500/trade&nbsp;<span style="color:var(--mu);font-size:10px">· edit: python watchlist_manager.py set-capital &lt;amount&gt; --risk &lt;pct&gt;</span></div></div><div class="section"><div class="stitle">Held (0)</div><div class="scroll"><table><thead><tr><th>Symbol</th><th>Character</th><th>Entry</th><th>Stop</th><th>Size</th><th>Risk/Share</th><th>Entry Date</th><th>Notes</th></tr></thead><tbody><tr><td colspan="8" class="empty">No held positions</td></tr></tbody></table></div></div><div class="section"><div class="stitle">Ready to Trade (0)</div><div class="scroll"><table><thead><tr><th>Symbol</th><th>Sector</th><th>Anchor Pt</th><th>Stop</th><th>Calc Size</th><th>Added</th><th>Notes</th></tr></thead><tbody><tr><td colspan="7" class="empty">No ready-to-trade names</td></tr></tbody></table></div></div><div class="section"><div class="stitle">Universe (0)</div><div class="scroll"><table><thead><tr><th>Symbol</th><th>Sector</th><th>Added</th><th>Notes</th></tr></thead><tbody><tr><td colspan="4" class="empty">Universe is empty — add stocks with: python watchlist_manager.py add SYMBOL --sector Sector</td></tr></tbody></table></div></div>
+</div>
+<div id="tab-journal" class="tab-content" style="display:none">
+<div class="section"><div class="empty" style="padding:24px">No journal entries yet. Run: <code>python journal_manager.py new</code></div></div>
+</div>
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.getElementById('tab-' + name).style.display = 'block';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function cellValue(row, index) {
+  return row.children[index].innerText.trim().replace('%', '').replace('+', '');
+}
+function sortTable(table, column, type, ascending) {
+  const tbody = table.tBodies[0];
+  const rows = Array.from(tbody.rows);
+  rows.sort((a, b) => {
+    const av = cellValue(a, column);
+    const bv = cellValue(b, column);
+    if (type === 'num') {
+      return (parseFloat(av) || 0) - (parseFloat(bv) || 0);
+    }
+    return av.localeCompare(bv);
+  });
+  if (!ascending) rows.reverse();
+  rows.forEach(row => tbody.appendChild(row));
+}
+document.querySelectorAll('#todayTopGainers th.sortable').forEach((th, index) => {
+  th.addEventListener('click', () => {
+    const ascending = th.dataset.asc !== 'true';
+    document.querySelectorAll('#todayTopGainers th.sortable').forEach(h => {
+      h.dataset.asc = ''; h.classList.remove('sorted');
+    });
+    document.querySelectorAll('#todayTopGainers td.sorted-col').forEach(td => td.classList.remove('sorted-col'));
+    th.dataset.asc = String(ascending);
+    th.classList.add('sorted');
+    document.querySelectorAll(`#todayTopGainers tbody tr td:nth-child(${index + 1})`).forEach(td => td.classList.add('sorted-col'));
+    sortTable(document.getElementById('todayTopGainers'), index, th.dataset.sort, ascending);
+  });
+});
+</script>
+</body>
+</html>
