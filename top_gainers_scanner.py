@@ -26,6 +26,11 @@ SUMMARY_CSV = os.path.join(OUT_DIR, "top_gainers_summary.csv")
 SUMMARY_JSON = os.path.join(OUT_DIR, "top_gainers_summary.json")
 DAILY_MD = os.path.join(OUT_DIR, "top_gainers_daily.md")
 HTML_DASHBOARD = os.path.join(OUT_DIR, "top_gainers_dashboard.html")
+WEEKLY_HTML_DASHBOARD = os.path.join(OUT_DIR, "top_week_gainers_dashboard.html")
+MONTHLY_HTML_DASHBOARD = os.path.join(OUT_DIR, "top_month_gainers_dashboard.html")
+COMMON_HTML_DASHBOARD = os.path.join(OUT_DIR, "top_common_gainers_dashboard.html")
+WATCHLIST_FILE = os.path.join(OUT_DIR, "watchlist.json")
+JOURNAL_DIR = os.path.join(OUT_DIR, "journal")
 
 WINDOWS = {
     "1w": 5,
@@ -154,6 +159,122 @@ def build_daily_rankings(
         rankings[trade_date] = sorted_rows
 
     return dict(sorted(rankings.items()))
+
+
+def build_cumulative_gainers(
+    price_by_symbol: dict[str, pd.DataFrame],
+    window_days: int,
+    gain_field: str,
+    top_n: int = 50,
+    min_close: float = 50.0,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for symbol, raw_df in price_by_symbol.items():
+        df = _normalize_price_frame(raw_df)
+        if len(df) <= window_days:
+            continue
+        latest_close = float(df["Close"].iloc[-1])
+        start_close = float(df["Close"].iloc[-(window_days + 1)])
+        prev_close = float(df["Close"].iloc[-2])
+        if latest_close < min_close or start_close <= 0 or prev_close <= 0:
+            continue
+        rows.append(
+            {
+                "symbol": symbol,
+                gain_field: round((latest_close / start_close - 1) * 100, 2),
+                "day_change_pct": round((latest_close / prev_close - 1) * 100, 2),
+                "start_close": round(start_close, 2),
+                "close": round(latest_close, 2),
+            }
+        )
+
+    ranked_rows = sorted(
+        rows,
+        key=lambda row: (row[gain_field], row["symbol"]),
+        reverse=True,
+    )[:top_n]
+    for rank, row in enumerate(ranked_rows, start=1):
+        row["rank"] = rank
+    return ranked_rows
+
+
+def build_weekly_gainers(
+    price_by_symbol: dict[str, pd.DataFrame],
+    top_n: int = 50,
+    window_days: int = WINDOWS["1w"],
+    min_close: float = 50.0,
+) -> list[dict[str, Any]]:
+    return build_cumulative_gainers(
+        price_by_symbol,
+        window_days=window_days,
+        gain_field="weekly_gain_pct",
+        top_n=top_n,
+        min_close=min_close,
+    )
+
+
+def build_monthly_gainers(
+    price_by_symbol: dict[str, pd.DataFrame],
+    top_n: int = 50,
+    window_days: int = WINDOWS["1m"],
+    min_close: float = 50.0,
+) -> list[dict[str, Any]]:
+    return build_cumulative_gainers(
+        price_by_symbol,
+        window_days=window_days,
+        gain_field="monthly_gain_pct",
+        top_n=top_n,
+        min_close=min_close,
+    )
+
+
+def build_common_period_gainers(
+    price_by_symbol: dict[str, pd.DataFrame],
+    top_n: int = 50,
+    min_close: float = 50.0,
+) -> list[dict[str, Any]]:
+    one_month_rows = build_cumulative_gainers(
+        price_by_symbol,
+        window_days=WINDOWS["1m"],
+        gain_field="monthly_gain_pct",
+        top_n=top_n,
+        min_close=min_close,
+    )
+    two_month_rows = build_cumulative_gainers(
+        price_by_symbol,
+        window_days=42,
+        gain_field="gain_2m_pct",
+        top_n=top_n,
+        min_close=min_close,
+    )
+    three_month_rows = build_cumulative_gainers(
+        price_by_symbol,
+        window_days=WINDOWS["3m"],
+        gain_field="gain_3m_pct",
+        top_n=top_n,
+        min_close=min_close,
+    )
+
+    one_by_symbol = {row["symbol"]: row for row in one_month_rows}
+    two_by_symbol = {row["symbol"]: row for row in two_month_rows}
+    three_by_symbol = {row["symbol"]: row for row in three_month_rows}
+    common_symbols = set(one_by_symbol) & set(two_by_symbol) & set(three_by_symbol)
+
+    rows: list[dict[str, Any]] = []
+    for symbol in common_symbols:
+        base = dict(one_by_symbol[symbol])
+        base["gain_2m_pct"] = two_by_symbol[symbol]["gain_2m_pct"]
+        base["gain_3m_pct"] = three_by_symbol[symbol]["gain_3m_pct"]
+        rows.append(base)
+
+    ranked_rows = sorted(
+        rows,
+        key=lambda row: (row["monthly_gain_pct"], row["symbol"]),
+        reverse=True,
+    )
+    for rank, row in enumerate(ranked_rows, start=1):
+        row["rank"] = rank
+    return ranked_rows
 
 
 def _latest_dates(rankings: dict[pd.Timestamp, list[dict[str, Any]]], count: int) -> set[pd.Timestamp]:
@@ -517,6 +638,17 @@ def build_html_dashboard_from_csv_rows(
     latest_rankings: list[dict[str, Any]] | None = None,
     circuit_map: dict[str, str] | None = None,
     sector_map: dict[str, dict[str, str]] | None = None,
+    *,
+    page_title: str = "NSE Top Gainers Dashboard",
+    source_label: str = "top_gainers_summary.csv",
+    table_title: str = "Today's Top 50 Gainers - sortable counts",
+    use_weekly_gain: bool = False,
+    gain_1w_field: str | None = None,
+    gain_1m_field: str | None = None,
+    gain_2m_field: str | None = None,
+    gain_3m_field: str | None = None,
+    include_gain_2m: bool = False,
+    row_count_label: str = "Today Top50",
 ) -> str:
     def as_int(row: dict[str, Any], key: str) -> int:
         value = row.get(key, 0)
@@ -560,7 +692,89 @@ def build_html_dashboard_from_csv_rows(
                 "gain_3m_pct": as_float(row, "gain_3m_pct"),
             }
         )
-    return _build_html_dashboard(summary_like, latest_date, latest_rankings or [], rows_are_csv=True, circuit_map=circuit_map)
+    return _build_html_dashboard(
+        summary_like,
+        latest_date,
+        latest_rankings or [],
+        rows_are_csv=True,
+        circuit_map=circuit_map,
+        page_title=page_title,
+        source_label=source_label,
+        table_title=table_title,
+        use_weekly_gain=use_weekly_gain,
+        gain_1w_field=gain_1w_field,
+        gain_1m_field=gain_1m_field,
+        gain_2m_field=gain_2m_field,
+        gain_3m_field=gain_3m_field,
+        include_gain_2m=include_gain_2m,
+        row_count_label=row_count_label,
+    )
+
+
+def build_weekly_html_dashboard_from_csv_rows(
+    rows: list[dict[str, Any]],
+    latest_date: str,
+    weekly_rankings: list[dict[str, Any]] | None = None,
+    circuit_map: dict[str, str] | None = None,
+    sector_map: dict[str, dict[str, str]] | None = None,
+) -> str:
+    return build_html_dashboard_from_csv_rows(
+        rows,
+        latest_date,
+        weekly_rankings or [],
+        circuit_map=circuit_map,
+        sector_map=sector_map,
+        page_title="NSE Top Week Gainers Dashboard",
+        source_label="top_gainers_summary.csv",
+        table_title="Top 50 Weekly Gainers - sortable counts",
+        gain_1w_field="weekly_gain_pct",
+        row_count_label="Top 50",
+    )
+
+
+def build_monthly_html_dashboard_from_csv_rows(
+    rows: list[dict[str, Any]],
+    latest_date: str,
+    monthly_rankings: list[dict[str, Any]] | None = None,
+    circuit_map: dict[str, str] | None = None,
+    sector_map: dict[str, dict[str, str]] | None = None,
+) -> str:
+    return build_html_dashboard_from_csv_rows(
+        rows,
+        latest_date,
+        monthly_rankings or [],
+        circuit_map=circuit_map,
+        sector_map=sector_map,
+        page_title="NSE Top Month Gainers Dashboard",
+        source_label="top_gainers_summary.csv",
+        table_title="Top 50 Monthly Gainers - sortable counts",
+        gain_1m_field="monthly_gain_pct",
+        row_count_label="Top 50",
+    )
+
+
+def build_common_html_dashboard_from_csv_rows(
+    rows: list[dict[str, Any]],
+    latest_date: str,
+    common_rankings: list[dict[str, Any]] | None = None,
+    circuit_map: dict[str, str] | None = None,
+    sector_map: dict[str, dict[str, str]] | None = None,
+) -> str:
+    return build_html_dashboard_from_csv_rows(
+        rows,
+        latest_date,
+        common_rankings or [],
+        circuit_map=circuit_map,
+        sector_map=sector_map,
+        page_title="NSE Common Period Gainers Dashboard",
+        source_label="top_gainers_summary.csv",
+        table_title="Common 1M / 2M / 3M Gainers - sortable counts",
+        gain_1m_field="monthly_gain_pct",
+        gain_2m_field="gain_2m_pct",
+        gain_3m_field="gain_3m_pct",
+        include_gain_2m=True,
+        row_count_label="Common",
+    )
 
 
 def build_html_dashboard(
@@ -572,15 +786,333 @@ def build_html_dashboard(
     return _build_html_dashboard(summary, latest_date, latest_rankings or [], rows_are_csv=False, circuit_map=circuit_map)
 
 
+def build_weekly_html_dashboard(
+    summary: list[dict[str, Any]],
+    latest_date: str,
+    weekly_rankings: list[dict[str, Any]] | None = None,
+    circuit_map: dict[str, str] | None = None,
+) -> str:
+    return _build_html_dashboard(
+        summary,
+        latest_date,
+        weekly_rankings or [],
+        rows_are_csv=False,
+        circuit_map=circuit_map,
+        page_title="NSE Top Week Gainers Dashboard",
+        source_label="top_gainers_summary.csv",
+        table_title="Top 50 Weekly Gainers - sortable counts",
+        gain_1w_field="weekly_gain_pct",
+        row_count_label="Top 50",
+    )
+
+
+def build_monthly_html_dashboard(
+    summary: list[dict[str, Any]],
+    latest_date: str,
+    monthly_rankings: list[dict[str, Any]] | None = None,
+    circuit_map: dict[str, str] | None = None,
+) -> str:
+    return _build_html_dashboard(
+        summary,
+        latest_date,
+        monthly_rankings or [],
+        rows_are_csv=False,
+        circuit_map=circuit_map,
+        page_title="NSE Top Month Gainers Dashboard",
+        source_label="top_gainers_summary.csv",
+        table_title="Top 50 Monthly Gainers - sortable counts",
+        gain_1m_field="monthly_gain_pct",
+        row_count_label="Top 50",
+    )
+
+
+def build_common_html_dashboard(
+    summary: list[dict[str, Any]],
+    latest_date: str,
+    common_rankings: list[dict[str, Any]] | None = None,
+    circuit_map: dict[str, str] | None = None,
+) -> str:
+    return _build_html_dashboard(
+        summary,
+        latest_date,
+        common_rankings or [],
+        rows_are_csv=False,
+        circuit_map=circuit_map,
+        page_title="NSE Common Period Gainers Dashboard",
+        source_label="top_gainers_summary.csv",
+        table_title="Common 1M / 2M / 3M Gainers - sortable counts",
+        gain_1m_field="monthly_gain_pct",
+        gain_2m_field="gain_2m_pct",
+        gain_3m_field="gain_3m_pct",
+        include_gain_2m=True,
+        row_count_label="Common",
+    )
+
+
+def _load_watchlist() -> dict:
+    if not os.path.exists(WATCHLIST_FILE):
+        return {"config": {"capital": 500000, "risk_pct": 0.5}, "universe": [], "ready_to_trade": [], "held": []}
+    with open(WATCHLIST_FILE, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _load_recent_journals(journal_dir: str, n: int = 7) -> list[dict]:
+    if not os.path.isdir(journal_dir):
+        return []
+    files = sorted((f for f in os.listdir(journal_dir) if f.endswith(".json")), reverse=True)[:n]
+    result = []
+    for fname in files:
+        with open(os.path.join(journal_dir, fname), encoding="utf-8") as fh:
+            result.append(json.load(fh))
+    return result
+
+
+_CHAR_BADGE: dict[str, str] = {
+    "Tennis-Ball": '<span class="badge badge-tb">Tennis-Ball</span>',
+    "Wet-Floor": '<span class="badge badge-wf">Wet-Floor</span>',
+    "Eating-Bottom": '<span class="badge badge-eb">Eating-Bottom</span>',
+    "Linear-Pole": '<span class="badge badge-lp">Linear-Pole</span>',
+    "Choppy": '<span class="badge badge-ch">Choppy</span>',
+}
+
+
+def _char_badge(char: str) -> str:
+    return _CHAR_BADGE.get(char, escape(char) if char and char != "-" else "—")
+
+
+def _build_watchlist_tab_html(data: dict) -> str:
+    cfg = data.get("config", {})
+    capital = float(cfg.get("capital", 500000))
+    risk_pct = float(cfg.get("risk_pct", 0.5))
+    risk_amount = capital * risk_pct / 100
+
+    def tv_link(sym: str) -> str:
+        s = escape(sym)
+        return f'<a href="https://in.tradingview.com/chart/?symbol=NSE:{s}" target="_blank" rel="noopener">{s}</a>'
+
+    held = data.get("held", [])
+    ready = data.get("ready_to_trade", [])
+    universe = data.get("universe", [])
+
+    if held:
+        held_rows = []
+        for e in held:
+            entry_p = float(e.get("entry", 0))
+            stop_p = float(e.get("stop", 0))
+            risk = entry_p - stop_p
+            stop_pct = (stop_p - entry_p) / entry_p * 100 if entry_p else 0
+            held_rows.append(
+                f'<tr>'
+                f'<td class="sym">{tv_link(e.get("symbol", ""))}</td>'
+                f'<td>{_char_badge(e.get("character", "-"))}</td>'
+                f'<td class="num">₹{entry_p:.2f}</td>'
+                f'<td class="num">₹{stop_p:.2f} <span class="neg">({stop_pct:.1f}%)</span></td>'
+                f'<td class="num">{e.get("size", 0)}</td>'
+                f'<td class="num neg">₹{risk:.2f}</td>'
+                f'<td class="num">{escape(e.get("entry_date", ""))}</td>'
+                f'<td style="max-width:160px;font-size:11px;color:var(--mu)">{escape(e.get("notes", ""))}</td>'
+                f'</tr>'
+            )
+        held_body = "\n".join(held_rows)
+    else:
+        held_body = '<tr><td colspan="8" class="empty">No held positions</td></tr>'
+
+    if ready:
+        ready_rows = []
+        for e in ready:
+            anchor = float(e.get("anchor_point", 0))
+            stop_p = float(e.get("stop_level", 0))
+            calc_sz = int(risk_amount / (anchor - stop_p)) if anchor > stop_p else 0
+            ready_rows.append(
+                f'<tr>'
+                f'<td class="sym">{tv_link(e.get("symbol", ""))}</td>'
+                f'<td>{escape(e.get("sector", ""))}</td>'
+                f'<td class="num">₹{anchor:.2f}</td>'
+                f'<td class="num">₹{stop_p:.2f}</td>'
+                f'<td class="num">{calc_sz}</td>'
+                f'<td class="num">{escape(e.get("added_date", ""))}</td>'
+                f'<td style="max-width:160px;font-size:11px;color:var(--mu)">{escape(e.get("notes", ""))}</td>'
+                f'</tr>'
+            )
+        ready_body = "\n".join(ready_rows)
+    else:
+        ready_body = '<tr><td colspan="7" class="empty">No ready-to-trade names</td></tr>'
+
+    if universe:
+        uni_rows = [
+            f'<tr>'
+            f'<td class="sym">{tv_link(e.get("symbol", ""))}</td>'
+            f'<td>{escape(e.get("sector", ""))}</td>'
+            f'<td class="num">{escape(e.get("added_date", ""))}</td>'
+            f'<td style="max-width:220px;font-size:11px;color:var(--mu)">{escape(e.get("notes", ""))}</td>'
+            f'</tr>'
+            for e in universe
+        ]
+        uni_body = "\n".join(uni_rows)
+    else:
+        uni_body = '<tr><td colspan="4" class="empty">Universe is empty — add stocks with: python watchlist_manager.py add SYMBOL --sector Sector</td></tr>'
+
+    return (
+        f'<div class="section">'
+        f'<div class="stitle" style="margin-bottom:6px">'
+        f'Capital ₹{capital:,.0f} &nbsp;|&nbsp; Risk {risk_pct}% = ₹{risk_amount:,.0f}/trade'
+        f'&nbsp;<span style="color:var(--mu);font-size:10px">· edit: python watchlist_manager.py set-capital &lt;amount&gt; --risk &lt;pct&gt;</span>'
+        f'</div></div>'
+        f'<div class="section"><div class="stitle">Held ({len(held)})</div>'
+        f'<div class="scroll"><table>'
+        f'<thead><tr><th>Symbol</th><th>Character</th><th>Entry</th><th>Stop</th><th>Size</th><th>Risk/Share</th><th>Entry Date</th><th>Notes</th></tr></thead>'
+        f'<tbody>{held_body}</tbody></table></div></div>'
+        f'<div class="section"><div class="stitle">Ready to Trade ({len(ready)})</div>'
+        f'<div class="scroll"><table>'
+        f'<thead><tr><th>Symbol</th><th>Sector</th><th>Anchor Pt</th><th>Stop</th><th>Calc Size</th><th>Added</th><th>Notes</th></tr></thead>'
+        f'<tbody>{ready_body}</tbody></table></div></div>'
+        f'<div class="section"><div class="stitle">Universe ({len(universe)})</div>'
+        f'<div class="scroll"><table>'
+        f'<thead><tr><th>Symbol</th><th>Sector</th><th>Added</th><th>Notes</th></tr></thead>'
+        f'<tbody>{uni_body}</tbody></table></div></div>'
+    )
+
+
+def _build_journal_tab_html(journal_dir: str) -> str:
+    journals = _load_recent_journals(journal_dir, n=7)
+    if not journals:
+        return (
+            '<div class="section"><div class="empty" style="padding:24px">'
+            'No journal entries yet. Run: <code>python journal_manager.py new</code>'
+            '</div></div>'
+        )
+
+    today_j = journals[0]
+    history = journals[1:]
+
+    regime = escape(today_j.get("market_regime", "") or "—")
+    leading = escape(", ".join(today_j.get("sectors_leading", [])) or "—")
+    lagging = escape(", ".join(today_j.get("sectors_lagging", [])) or "—")
+
+    trades = today_j.get("trades_taken", [])
+    total_r = sum(t.get("r_result", 0) or 0 for t in trades)
+    violations = sum(1 for t in trades if not t.get("followed_plan", True))
+
+    trade_rows = ""
+    for t in trades:
+        exit_str = f'₹{t["exit"]:.2f}' if t.get("exit") else "open"
+        r = t.get("r_result")
+        r_str = f'{r:+.2f}R' if r is not None else "—"
+        r_cls = "pos" if (r or 0) > 0 else ("neg" if (r or 0) < 0 else "")
+        plan_icon = "✓" if t.get("followed_plan", True) else '<span class="neg">✗</span>'
+        trade_rows += (
+            f'<tr><td class="sym">{escape(t["symbol"])}</td>'
+            f'<td style="font-size:11px">{escape(t.get("setup", ""))}</td>'
+            f'<td class="num">₹{t["entry"]:.2f}</td><td class="num">₹{t["stop"]:.2f}</td>'
+            f'<td class="num">{t.get("size", "")}</td><td class="num">{exit_str}</td>'
+            f'<td class="num {r_cls}">{r_str}</td>'
+            f'<td style="text-align:center">{plan_icon}</td></tr>'
+        )
+    if not trade_rows:
+        trade_rows = '<tr><td colspan="8" class="empty">No trades today</td></tr>'
+
+    missed_rows = "".join(
+        f'<tr><td class="sym">{escape(m["symbol"])}</td>'
+        f'<td style="font-size:11px;color:var(--mu)">{escape(m.get("reason", ""))}</td></tr>'
+        for m in today_j.get("trades_missed", [])
+    ) or '<tr><td colspan="2" class="empty">—</td></tr>'
+
+    char_rows = "".join(
+        f'<tr><td class="sym">{escape(p["symbol"])}</td><td>{_char_badge(p.get("character", ""))}</td></tr>'
+        for p in today_j.get("positions_character", [])
+    ) or '<tr><td colspan="2" class="empty">—</td></tr>'
+
+    em = today_j.get("emotion", {})
+    did_well = escape(today_j.get("did_well", "") or "—")
+    fix_tmrw = escape(today_j.get("fix_tomorrow", "") or "—")
+    r_cls = "pos" if total_r >= 0 else "neg"
+    v_cls = "neg" if violations else "grn"
+
+    today_card = (
+        f'<div class="section">'
+        f'<div class="stitle">Today — {escape(today_j.get("date", ""))}</div>'
+        f'<div class="bar" style="margin-bottom:12px">'
+        f'<div class="stat"><div class="sv">{regime}</div><div class="sl">Regime</div></div>'
+        f'<div class="stat"><div class="sv grn" style="font-size:13px">{leading}</div><div class="sl">Leading</div></div>'
+        f'<div class="stat"><div class="sv red" style="font-size:13px">{lagging}</div><div class="sl">Lagging</div></div>'
+        f'<div class="stat"><div class="sv {r_cls}">{total_r:+.2f}R</div><div class="sl">Day R</div></div>'
+        f'<div class="stat"><div class="sv {v_cls}">{violations}</div><div class="sl">Violations</div></div>'
+        f'</div>'
+        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+        f'<div><div class="stitle" style="font-size:10px">Trades Taken</div>'
+        f'<div class="scroll"><table><thead><tr><th>Symbol</th><th>Setup</th><th>Entry</th><th>Stop</th><th>Size</th><th>Exit</th><th>R</th><th>Plan</th></tr></thead>'
+        f'<tbody>{trade_rows}</tbody></table></div></div>'
+        f'<div style="display:flex;flex-direction:column;gap:12px">'
+        f'<div><div class="stitle" style="font-size:10px">Missed</div>'
+        f'<table><thead><tr><th>Symbol</th><th>Reason</th></tr></thead><tbody>{missed_rows}</tbody></table></div>'
+        f'<div><div class="stitle" style="font-size:10px">Open Position Character</div>'
+        f'<table><thead><tr><th>Symbol</th><th>Character</th></tr></thead><tbody>{char_rows}</tbody></table></div>'
+        f'</div></div>'
+        f'<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px">'
+        f'<div style="flex:1;background:var(--bg2);padding:8px 12px;border-radius:6px;border:1px solid var(--bd)">'
+        f'<div style="color:var(--mu);font-size:10px;margin-bottom:3px">Did well</div>{did_well}</div>'
+        f'<div style="flex:1;background:var(--bg2);padding:8px 12px;border-radius:6px;border:1px solid var(--bd)">'
+        f'<div style="color:var(--mu);font-size:10px;margin-bottom:3px">Fix tomorrow</div>{fix_tmrw}</div>'
+        f'<div style="background:var(--bg2);padding:8px 12px;border-radius:6px;border:1px solid var(--bd)">'
+        f'<div style="color:var(--mu);font-size:10px;margin-bottom:3px">Emotions (1-10)</div>'
+        f'Hesitation <b>{em.get("hesitation", 0)}</b> &nbsp;Greed <b>{em.get("greed", 0)}</b> &nbsp;Regret <b>{em.get("regret", 0)}</b>'
+        f'</div></div></div>'
+    )
+
+    if history:
+        hist_rows = ""
+        for j in history:
+            jt = j.get("trades_taken", [])
+            j_r = sum(t.get("r_result", 0) or 0 for t in jt)
+            j_viol = sum(1 for t in jt if not t.get("followed_plan", True))
+            jr_cls = "pos" if j_r > 0 else ("neg" if j_r < 0 else "")
+            hist_rows += (
+                f'<tr><td class="num">{escape(j.get("date", ""))}</td>'
+                f'<td>{escape(j.get("market_regime", "") or "—")}</td>'
+                f'<td class="num">{len(jt)}</td>'
+                f'<td class="num {jr_cls}">{j_r:+.2f}R</td>'
+                f'<td class="num {"neg" if j_viol else ""}">{j_viol}</td></tr>'
+            )
+        history_section = (
+            f'<div class="section"><div class="stitle">History (last {len(history)} days)</div>'
+            f'<table><thead><tr><th>Date</th><th>Regime</th><th>Trades</th><th>R Total</th><th>Violations</th></tr></thead>'
+            f'<tbody>{hist_rows}</tbody></table></div>'
+        )
+    else:
+        history_section = ""
+
+    return today_card + history_section
+
+
 def _build_html_dashboard(
     summary: list[dict[str, Any]],
     latest_date: str,
     latest_rankings: list[dict[str, Any]],
     rows_are_csv: bool,
     circuit_map: dict[str, str] | None = None,
+    *,
+    page_title: str = "NSE Top Gainers Dashboard",
+    source_label: str = "top_gainers_summary.csv",
+    table_title: str = "Today's Top 50 Gainers - sortable counts",
+    use_weekly_gain: bool = False,
+    gain_1w_field: str | None = None,
+    gain_1m_field: str | None = None,
+    gain_2m_field: str | None = None,
+    gain_3m_field: str | None = None,
+    include_gain_2m: bool = False,
+    row_count_label: str = "Today Top50",
 ) -> str:
+    if use_weekly_gain and gain_1w_field is None:
+        gain_1w_field = "weekly_gain_pct"
+
     summary_by_symbol = {row["symbol"]: row for row in summary}
     generated = datetime.now().strftime("%Y-%m-%d %H:%M")
+    watchlist_data = _load_watchlist()
+    watchlist_html = _build_watchlist_tab_html(watchlist_data)
+    journal_html = _build_journal_tab_html(JOURNAL_DIR)
+
+    gain_2m_header = '<th class="sortable" data-sort="num">Gain 2M</th>' if include_gain_2m else ""
+    empty_colspan = 19 if include_gain_2m else 18
 
     body_rows = []
     for row in sorted(latest_rankings, key=lambda item: item["rank"]):
@@ -600,16 +1132,21 @@ def _build_html_dashboard(
         if industry:
             sector_inner += f'<br><span style="font-size:10px;color:var(--mu)">{escape(industry)}</span>'
         sector_cell = f'<td>{sector_inner}</td>'
+        gain_1w_value = row.get(gain_1w_field) if gain_1w_field else counts.get("gain_1w_pct")
+        gain_1m_value = row.get(gain_1m_field) if gain_1m_field else counts.get("gain_1m_pct")
+        gain_2m_cell = _td_pct(row.get(gain_2m_field)) if include_gain_2m and gain_2m_field else ""
+        gain_3m_value = row.get(gain_3m_field) if gain_3m_field else counts.get("gain_3m_pct")
         body_rows.append(
             f'<tr class="{row_class}">'
             f'<td class="num">{int(row["rank"])}</td>'
             f'<td class="sym"><a href="{tv}" target="_blank" rel="noopener">{symbol}</a></td>'
             f'{sector_cell}'
             f'<td class="num">{float(row["close"]):.2f}</td>'
-            f'<td class="num pos">{day_change:+.2f}%</td>'
-            f'{_td_pct(counts.get("gain_1w_pct"))}'
-            f'{_td_pct(counts.get("gain_1m_pct"))}'
-            f'{_td_pct(counts.get("gain_3m_pct"))}'
+            f'{_td_pct(day_change)}'
+            f'{_td_pct(gain_1w_value)}'
+            f'{_td_pct(gain_1m_value)}'
+            f'{gain_2m_cell}'
+            f'{_td_pct(gain_3m_value)}'
             f'{circ_cell}'
             f'{_td_num(counts["top50_1w_count"])}'
             f'{_td_num(counts["top50_1m_count"])}'
@@ -623,14 +1160,14 @@ def _build_html_dashboard(
             "</tr>"
         )
 
-    table_body = "\n".join(body_rows) if body_rows else '<tr><td colspan="18" class="empty">No top gainer rows</td></tr>'
+    table_body = "\n".join(body_rows) if body_rows else f'<tr><td colspan="{empty_colspan}" class="empty">No top gainer rows</td></tr>'
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NSE Top Gainers Dashboard - {escape(latest_date)}</title>
+<title>{escape(page_title)} - {escape(latest_date)}</title>
 <style>
 :root{{
   --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
@@ -670,29 +1207,54 @@ td.sorted-col{{background:rgba(255,215,0,.04)}}
 .empty{{color:var(--mu);font-style:italic;text-align:center;padding:8px}}
 .scroll{{overflow:auto;max-height:78vh;border-radius:6px}}
 @media(max-width:900px){{body{{padding:10px}}.days{{min-width:180px}}}}
+.tab-nav{{display:flex;gap:6px;margin-bottom:14px}}
+.tab-btn{{background:var(--bg2);border:1px solid var(--bd);color:var(--mu);padding:5px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.4px;transition:color .15s,border-color .15s}}
+.tab-btn.active{{background:var(--bg3);border-color:var(--blu);color:var(--blu)}}
+.tab-content{{display:block}}
+.badge{{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700}}
+.badge-tb{{background:rgba(63,185,80,.2);color:var(--grn)}}.badge-wf{{background:rgba(248,81,73,.2);color:var(--red)}}.badge-eb{{background:rgba(227,179,65,.2);color:var(--ylw)}}.badge-lp{{background:rgba(88,166,255,.2);color:var(--blu)}}.badge-ch{{background:rgba(139,148,158,.2);color:var(--mu)}}
 </style>
 </head>
 <body>
-<h1>NSE Top Gainers Dashboard - {escape(latest_date)}</h1>
-<div class="sub">Generated {escape(generated)} IST from top_gainers_summary.csv</div>
+<h1>{escape(page_title)} - {escape(latest_date)}</h1>
+<div class="sub">Generated {escape(generated)} IST from {escape(source_label)}</div>
 <div class="bar">
-  <div class="stat"><div class="sv blu">{len(body_rows)}</div><div class="sl">Today Top50</div></div>
+  <div class="stat"><div class="sv blu">{len(body_rows)}</div><div class="sl">{escape(row_count_label)}</div></div>
   <div class="stat"><div class="sv gld">{_count_total(summary, "top50_1w_count")}</div><div class="sl">Top50 1W</div></div>
   <div class="stat"><div class="sv gld">{_count_total(summary, "top50_1m_count")}</div><div class="sl">Top50 1M</div></div>
   <div class="stat"><div class="sv gld">{_count_total(summary, "top50_3m_count")}</div><div class="sl">Top50 3M</div></div>
   <div class="stat"><div class="sv grn">{_count_total(summary, "up4_1m_count")}</div><div class="sl">Up >=4% 1M</div></div>
   <div class="stat"><div class="sv red">{_count_total(summary, "down4_1m_count")}</div><div class="sl">Down &gt;4% 1M</div></div>
 </div>
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="showTab('gainers',this)">Top Gainers</button>
+  <button class="tab-btn" onclick="showTab('watchlist',this)">Watchlist</button>
+  <button class="tab-btn" onclick="showTab('journal',this)">Journal</button>
+</nav>
+<div id="tab-gainers" class="tab-content">
 <div class="section">
-  <div class="stitle">Today's Top 50 Gainers - sortable counts</div>
+  <div class="stitle">{table_title}</div>
   <div class="scroll">
     <table id="todayTopGainers">
-      <thead><tr><th class="sortable" data-sort="num">Rank</th><th class="sortable" data-sort="text">Symbol</th><th class="sortable" data-sort="text">Sector</th><th class="sortable" data-sort="num">Close</th><th class="sortable" data-sort="num">Day Chg</th><th class="sortable" data-sort="num">Gain 1W</th><th class="sortable" data-sort="num">Gain 1M</th><th class="sortable" data-sort="num">Gain 3M</th><th class="sortable" data-sort="text">Circuit</th><th class="sortable" data-sort="num">Top50 1W</th><th class="sortable" data-sort="num">Top50 1M</th><th class="sortable" data-sort="num">Top50 3M</th><th class="sortable" data-sort="num">Up >=4% 1W</th><th class="sortable" data-sort="num">Up >=4% 1M</th><th class="sortable" data-sort="num">Up >=4% 3M</th><th class="sortable" data-sort="num">Down &gt;4% 1W</th><th class="sortable" data-sort="num">Down &gt;4% 1M</th><th class="sortable" data-sort="num">Down &gt;4% 3M</th></tr></thead>
+      <thead><tr><th class="sortable" data-sort="num">Rank</th><th class="sortable" data-sort="text">Symbol</th><th class="sortable" data-sort="text">Sector</th><th class="sortable" data-sort="num">Close</th><th class="sortable" data-sort="num">Day Chg</th><th class="sortable" data-sort="num">Gain 1W</th><th class="sortable" data-sort="num">Gain 1M</th>{gain_2m_header}<th class="sortable" data-sort="num">Gain 3M</th><th class="sortable" data-sort="text">Circuit</th><th class="sortable" data-sort="num">Top50 1W</th><th class="sortable" data-sort="num">Top50 1M</th><th class="sortable" data-sort="num">Top50 3M</th><th class="sortable" data-sort="num">Up >=4% 1W</th><th class="sortable" data-sort="num">Up >=4% 1M</th><th class="sortable" data-sort="num">Up >=4% 3M</th><th class="sortable" data-sort="num">Down &gt;4% 1W</th><th class="sortable" data-sort="num">Down &gt;4% 1M</th><th class="sortable" data-sort="num">Down &gt;4% 3M</th></tr></thead>
       <tbody>{table_body}</tbody>
     </table>
   </div>
 </div>
+</div>
+<div id="tab-watchlist" class="tab-content" style="display:none">
+{watchlist_html}
+</div>
+<div id="tab-journal" class="tab-content" style="display:none">
+{journal_html}
+</div>
 <script>
+function showTab(name, btn) {{
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.getElementById('tab-' + name).style.display = 'block';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}}
 function cellValue(row, index) {{
   return row.children[index].innerText.trim().replace('%', '').replace('+', '');
 }}
@@ -753,7 +1315,11 @@ def build_daily_markdown(rankings: dict[pd.Timestamp, list[dict[str, Any]]]) -> 
     return "\n".join(lines)
 
 
-def write_outputs(summary: list[dict[str, Any]], rankings: dict[pd.Timestamp, list[dict[str, Any]]]) -> None:
+def write_outputs(
+    summary: list[dict[str, Any]],
+    rankings: dict[pd.Timestamp, list[dict[str, Any]]],
+    price_by_symbol: dict[str, pd.DataFrame],
+) -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
 
     with open(SUMMARY_MD, "w", encoding="utf-8") as fh:
@@ -773,9 +1339,18 @@ def write_outputs(summary: list[dict[str, Any]], rankings: dict[pd.Timestamp, li
     latest_date = max(rankings).strftime("%Y-%m-%d") if rankings else ""
     csv_rows = pd.read_csv(SUMMARY_CSV).to_dict("records")
     latest_rankings = rankings[max(rankings)] if rankings else []
+    weekly_rankings = build_weekly_gainers(price_by_symbol)
+    monthly_rankings = build_monthly_gainers(price_by_symbol)
+    common_rankings = build_common_period_gainers(price_by_symbol)
     circuit_map = load_circuit_map()
     with open(HTML_DASHBOARD, "w", encoding="utf-8") as fh:
         fh.write(build_html_dashboard_from_csv_rows(csv_rows, latest_date, latest_rankings, circuit_map=circuit_map, sector_map=sector_map))
+    with open(WEEKLY_HTML_DASHBOARD, "w", encoding="utf-8") as fh:
+        fh.write(build_weekly_html_dashboard_from_csv_rows(csv_rows, latest_date, weekly_rankings, circuit_map=circuit_map, sector_map=sector_map))
+    with open(MONTHLY_HTML_DASHBOARD, "w", encoding="utf-8") as fh:
+        fh.write(build_monthly_html_dashboard_from_csv_rows(csv_rows, latest_date, monthly_rankings, circuit_map=circuit_map, sector_map=sector_map))
+    with open(COMMON_HTML_DASHBOARD, "w", encoding="utf-8") as fh:
+        fh.write(build_common_html_dashboard_from_csv_rows(csv_rows, latest_date, common_rankings, circuit_map=circuit_map, sector_map=sector_map))
 
 
 def main() -> None:
@@ -797,12 +1372,15 @@ def main() -> None:
     print("\nAggregating repeat and >=4% counts...")
     summary = aggregate_symbol_counts(rankings, price_by_symbol)
 
-    write_outputs(summary, rankings)
+    write_outputs(summary, rankings, price_by_symbol)
     print(f"\n  Saved -> {SUMMARY_MD}")
     print(f"  Saved -> {SUMMARY_CSV}")
     print(f"  Saved -> {SUMMARY_JSON}")
     print(f"  Saved -> {DAILY_MD}")
     print(f"  Saved -> {HTML_DASHBOARD}")
+    print(f"  Saved -> {WEEKLY_HTML_DASHBOARD}")
+    print(f"  Saved -> {MONTHLY_HTML_DASHBOARD}")
+    print(f"  Saved -> {COMMON_HTML_DASHBOARD}")
 
 
 if __name__ == "__main__":
