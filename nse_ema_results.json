@@ -75,6 +75,7 @@
   "BIOCON": -1.07,
   "BLISSGVS": 6.92,
   "BLSE": 0.04,
+  "BODALCHEM": -0.35,
   "BOROSCI": -0.95,
   "CAMS": 0.14,
   "CAPLIPOINT": -0.5,
@@ -119,7 +120,6 @@
   "EBGNG": 6.34,
   "EDELWEISS": -2.33,
   "EFFWA": -3.16,
-  "EIFFL": -3.75,
   "ELECTHERM": 3.48,
   "ELGIEQUIP": -0.87,
   "EMBASSY.RR": -0.06,
@@ -388,6 +388,7 @@
   "SCHNEIDER": -2.81,
   "SCI": -3.5,
   "SEAMECLTD": 2.81,
+  "SEJALLTD": -2.24,
   "SENORES": -0.39,
   "SGFIN": 0.52,
   "SGIL": 0.36,
@@ -497,6 +498,5 @@
   "YATHARTH": -2.33,
   "YESBANK": -0.28,
   "ZENTEC": -3.89,
-  "ZFCVINDIA": -1.65,
   "ZYDUSWELL": -1.42
 }
