@@ -2,21 +2,13 @@
 
 _Criteria: EMA50 > EMA100 > EMA200 (full bullish stack) | MCap ₹800 Cr – ₹1 Lakh Cr_
 
-**Total stocks in list: 500** &nbsp;|&nbsp; **Additions: 3** &nbsp;|&nbsp; **Deletions: 3**
+**Total stocks in list: 500** &nbsp;|&nbsp; **Additions: 0** &nbsp;|&nbsp; **Deletions: 0**
 
-## ✅ Additions (3)
-| Symbol | Day Change % |
-|--------|:------------:|
-| [AARTIDRUGS](https://in.tradingview.com/chart/?symbol=NSE:AARTIDRUGS) | +0.86% |
-| [PCJEWELLER](https://in.tradingview.com/chart/?symbol=NSE:PCJEWELLER) | +0.55% |
-| [SAKAR](https://in.tradingview.com/chart/?symbol=NSE:SAKAR) | -1.81% |
+## ✅ Additions (0)
+_No new entries today_
 
-## ❌ Deletions (3)
-| Symbol | Last Day Change % |
-|--------|:----------------:|
-| [FMGOETZE](https://in.tradingview.com/chart/?symbol=NSE:FMGOETZE) | -0.30% |
-| [SPAL](https://in.tradingview.com/chart/?symbol=NSE:SPAL) | -0.88% |
-| [GREENLAM](https://in.tradingview.com/chart/?symbol=NSE:GREENLAM) | -2.21% |
+## ❌ Deletions (0)
+_No exits today_
 
 ## 📋 Full List (500)
 | # | Symbol | Day Change % |
